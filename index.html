@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Adaptive Traffic Light - Multi-direction</title>
+      
+        <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+      
+        <style>
+          body { font-family: Arial, sans-serif; margin: 2em; background: #f7f7f7; color: #333; }
+          h1 { color: #00695c; }
+          .light-box { background: white; padding: 1em; margin: 1em 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+          .light-box h2 { margin: 0; }
+          .light-state { font-size: 1.5em; }
+          input, button { padding: 0.5em; margin: 0.5em 0; }
+          button { background: #00695c; color: #fff; border: none; cursor: pointer; }
+          button:hover { background: #004d40; }
+        </style>
+      </head>
+      
+<body>
+    <h1>Adaptive Traffic Light - Multi-direction</h1>
+
+    <!-- Flex container for layout -->
+    <div style="display: flex; gap: 1em;">
+  
+      <!-- Left: Traffic Light Boxes -->
+      <div id="traffic-lights" style="flex: 0 0 25%; padding: 1em;">
+        <!-- North -->
+        <div class="light-box">
+          <h2>North</h2>
+          <div>Light State: <span id="north-light">Loading...</span></div>
+          <div>Vehicle Queue: <span id="north-queue">Loading...</span></div>
+        </div>
+  
+        <!-- East -->
+        <div class="light-box">
+          <h2>East</h2>
+          <div>Light State: <span id="east-light">Loading...</span></div>
+          <div>Vehicle Queue: <span id="east-queue">Loading...</span></div>
+          <input type="number" id="east-count" placeholder="Enter # of cars" />
+          <button onclick="submitCount('east')">Submit Car Count</button>
+        </div>
+  
+        <!-- South -->
+        <div class="light-box">
+          <h2>South</h2>
+          <div>Light State: <span id="south-light">Loading...</span></div>
+          <div>Vehicle Queue: <span id="south-queue">Loading...</span></div>
+          <input type="number" id="south-count" placeholder="Enter # of cars" />
+          <button onclick="submitCount('south')">Submit Car Count</button>
+        </div>
+  
+        <!-- West -->
+        <div class="light-box">
+          <h2>West</h2>
+          <div>Light State: <span id="west-light">Loading...</span></div>
+          <div>Vehicle Queue: <span id="west-queue">Loading...</span></div>
+          <input type="number" id="west-count" placeholder="Enter # of cars" />
+          <button onclick="submitCount('west')">Submit Car Count</button>
+        </div>
+      </div>
+  
+      <!-- Right: Vehicle Queue Array Sidebar -->
+      <div id="vehicle-queue-array" style="flex: 1; padding: 1em; background: #ffffff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3>Vehicle Queues (N, E, S, W)</h3>
+        <pre id="queue-array-display">Loading...</pre>
+        <div id="intersection-diagram" style="position: relative; margin-top: 2em;">
+            <img src="TrafficLight.png" style="width: 100%; max-width: 500px; display: block; margin: 0 auto;">
+            
+            <!-- Overlay vehicle queue counts -->
+            <div id="north-queue-display" style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-weight: bold; color: white;"></div>
+            <div id="east-queue-display" style="position: absolute; top: 50%; right: 10%; transform: translateY(-50%); font-weight: bold;"></div>
+            <div id="south-queue-display" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-weight: bold; color: white;"></div>
+            <div id="west-queue-display" style="position: absolute; top: 50%; left: 10%; transform: translateY(-50%); font-weight: bold;"></div>
+          </div>
+        <!-- Reset Button -->
+        <button onclick="resetAll()" style="background: #c62828; color: #fff; padding: 0.5em; margin-top: 1em;">Reset All Intersections</button>
+      </div>
+    </div>
+  
+    <!-- JavaScript -->
+
+    <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqs5rvONMhZWc_HFffuKJprSO1Ic-aUQQ",
+      authDomain: "adaptive-traffic-light.firebaseapp.com",
+      projectId: "adaptive-traffic-light",
+      storageBucket: "adaptive-traffic-light.firebasestorage.app",
+      messagingSenderId: "73654968659",
+      appId: "1:73654968659:web:9055552678c5b70e8481a6",
+      measurementId: "G-HS7RT5YPKW"
+    };
+
+   
+   
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const directions = ['north', 'east', 'south', 'west'];
+  const vehicleQueues = { N: 0, E: 0, S: 0, W: 0 };
+  const directionMap = { north: 'N', east: 'E', south: 'S', west: 'W' }; 
+
+
+  // Realtime updates for each direction
+  directions.forEach(direction => {
+    db.collection('traffic_data').doc(direction).onSnapshot(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        document.getElementById(`${direction}-light`).innerHTML =
+          data.light_state == 1 ? "🟩 Green" : "🟥 Red";
+        document.getElementById(`${direction}-queue`).innerHTML = data.vehicle_queue;
+        // Update vehicle queue array
+      vehicleQueues[directionMap[direction]] = data.vehicle_queue;
+      updateQueueArrayDisplay();
+      } else {
+        document.getElementById(`${direction}-light`).innerHTML = "Not available";
+        document.getElementById(`${direction}-queue`).innerHTML = "Not available";
+      }
+    });
+  });
+  function updateQueueArrayDisplay() {
+    const queueArray = [vehicleQueues.N, vehicleQueues.E, vehicleQueues.S, vehicleQueues.W];
+    document.getElementById('queue-array-display').textContent = JSON.stringify(queueArray);
+
+    // Update intersection diagram overlays
+    document.getElementById('north-queue-display').textContent = vehicleQueues.N;
+    document.getElementById('east-queue-display').textContent = vehicleQueues.E;
+    document.getElementById('south-queue-display').textContent = vehicleQueues.S;
+    document.getElementById('west-queue-display').textContent = vehicleQueues.W;
+  }
+  // Submit car count (East, South, West)
+  function submitCount(direction) {
+    const inputEl = document.getElementById(`${direction}-count`);
+    const count = parseInt(inputEl.value);
+    if (isNaN(count)) {
+      alert("Please enter a valid number!");
+      return;
+    }
+    db.collection('traffic_data').doc(direction).set({
+      vehicle_queue: count
+    }, { merge: true })
+    .then(() => {
+      alert(`Vehicle queue for ${direction} set to ${count}!`);
+      inputEl.value = ""; // clear input
+    })
+    .catch(error => {
+      console.error("Error updating vehicle queue: ", error);
+      alert("Error updating vehicle queue. Check console for details.");
+    });
+  }
+  function resetAll() {
+  const defaultState = {
+    light_state: 0,
+    vehicle_queue: 0
+  };
+
+  const directions = ['north', 'east', 'south', 'west'];
+  directions.forEach(direction => {
+    db.collection('traffic_data').doc(direction).set(defaultState, { merge: true })
+    .then(() => {
+      console.log(`Reset ${direction} intersection`);
+    })
+    .catch(error => {
+      console.error(`Error resetting ${direction}:`, error);
+      alert(`Error resetting ${direction}. Check console for details.`);
+    });
+  });
+
+  alert("All intersections have been reset to default!");
+}
+</script>
+</body>
+</html>
