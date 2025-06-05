@@ -3,4 +3,4 @@
 
 
 **FINAL VISION**
-[Diagram.pdf](https://github.com/user-attachments/files/20617536/Diagram.pdf)
+<img width="1440" alt="Screenshot 2025-06-05 at 1 16 21 PM" src="https://github.com/user-attachments/assets/e04b526b-80aa-4beb-a4bc-7a267a7eeecd" />
